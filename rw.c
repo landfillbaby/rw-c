@@ -27,15 +27,6 @@ Read stdin into memory then open and write to FILE or stdout.\n\
       stderr);
   return -1;
 }
-static size_t new_buffersize(size_t currentsize) {
-  size_t addend;
-  if(currentsize > 65536) addend = currentsize >> 3;
-  else
-    addend = 256 + currentsize;
-  if(addend < CHUNK) addend = CHUNK;
-  if(addend + currentsize < currentsize) return SIZE_MAX;
-  return addend + currentsize;
-}
 int main(int argc, char **argv) {
   char *outname = 0;
   bool append = 0;
@@ -68,15 +59,20 @@ int main(int argc, char **argv) {
   size_t bytes_read = 0;
   while(1) {
     if(bytes_read >= bufsize) {
-      size_t old_bufsize = bufsize;
-      bufsize = new_buffersize(bytes_read);
+      size_t old_bufsize = bufsize, addend;
+      if(bytes_read > 65536) addend = bytes_read >> 3;
+      else
+	addend = 256 + bytes_read;
+      if(addend < CHUNK) addend = CHUNK;
+      if(addend + bytes_read < bytes_read) bufsize = SIZE_MAX;
+      else
+	bufsize = addend + bytes_read;
       if(old_bufsize < bufsize) {
-	char *new_buf = realloc(buf, bufsize);
-	if(!new_buf) {
+	buf = realloc(buf, bufsize);
+	if(!buf) {
 	  perror("ERROR");
 	  return 1;
 	}
-	buf = new_buf;
       }
     }
     ssize_t n = read(0, buf + bytes_read, bufsize - bytes_read);
