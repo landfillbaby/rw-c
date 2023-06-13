@@ -10,18 +10,15 @@ Python _io_FileIO_readall_impl
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#if !defined NO_CHECKMEM && SIZE_MAX == 0xFFFFFFFFFFFFFFFF
-#define NO_CHECKMEM
-#endif
-#ifndef NO_CHECKMEM
+#ifdef CHECKMEM
 #include <errno.h>
 #endif
-#if BUFSIZ < 8192
-#define CHUNK 8192
-#elif(BUFSIZ >= (1 << 26))
-#error "unreasonable BUFSIZ > 64 MiB defined"
+#ifndef CHUNK
+#ifdef _WIN32
+#define CHUNK (BUFSIZ > (1 << 20) ? BUFSIZ : (1 << 20))
 #else
-#define CHUNK BUFSIZ
+#define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
+#endif
 #endif
 #ifdef _WIN32
 #error "Windows TODO"
@@ -64,29 +61,27 @@ int main(int argc, char **argv) {
   }
   size_t bytes_read = 0;
   while(1) {
-    if(bytes_read >= bufsize) {
-#ifndef NO_CHECKMEM
+    if(bytes_read == bufsize) {
+#ifdef CHECKMEM
       if(bufsize == SIZE_MAX) {
-	errno = ENOMEM;
+	if(!read(0, buf, 1)) break;
+	errno = EOVERFLOW;
 	perror("ERROR");
 	return 1;
       }
 #endif
-      size_t old_bufsize = bufsize, addend;
-      if(bytes_read > 65536) addend = bytes_read >> 3;
-      else
-	addend = 256 + bytes_read;
+      size_t addend = bufsize / 8;
       if(addend < CHUNK) addend = CHUNK;
-      if(addend + bytes_read < bytes_read || addend + bytes_read > SIZE_MAX)
+#ifdef CHECKMEM
+      if(bufsize + addend < bufsize || bufsize + addend > SIZE_MAX)
 	bufsize = SIZE_MAX;
       else
-	bufsize = addend + bytes_read;
-      if(old_bufsize < bufsize) {
-	buf = realloc(buf, bufsize);
-	if(!buf) {
-	  perror("ERROR");
-	  return 1;
-	}
+#endif
+	bufsize += addend;
+      buf = realloc(buf, bufsize);
+      if(!buf) {
+	perror("ERROR");
+	return 1;
       }
     }
     ssize_t n = read(0, buf + bytes_read, bufsize - bytes_read);
@@ -111,14 +106,10 @@ int main(int argc, char **argv) {
     perror("ERROR");
     return 1;
   }
-  while(bytes_read) {
-    size_t n = fwrite(buf, 1, bytes_read, f);
-    if(!n) {
-      perror("ERROR");
-      fclose(f);
-      return 1;
-    }
-    bytes_read -= n;
+  if(bytes_read && !fwrite(buf, 1, bytes_read, f)) {
+    perror("ERROR");
+    fclose(f);
+    return 1;
   }
   if(fclose(f)) {
     perror("ERROR");
