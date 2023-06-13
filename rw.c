@@ -2,26 +2,29 @@
 /* based on:
 https://github.com/jridgewell/rw
 moreutils sponge
-Python _io_FileIO_readall_impl
+Python _io_FileIO_readall_impl and shutil.copyfile
 */
 #define _FILE_OFFSET_BITS 64
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #ifdef CHECKMEM
 #include <errno.h>
 #endif
-#ifndef CHUNK
 #ifdef _WIN32
+#define _CRT_NONSTDC_NO_WARNINGS
+#include <fcntl.h>
+#include <io.h>
+#ifndef CHUNK
 #define CHUNK (BUFSIZ > (1 << 20) ? BUFSIZ : (1 << 20))
+#endif
 #else
+#include <unistd.h>
+#define setmode(...) 0
+#ifndef CHUNK
 #define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
 #endif
-#endif
-#ifdef _WIN32
-#error "Windows TODO"
 #endif
 static int usage(void) {
   fputs("Usage: rw [[-a] FILE]\n\
@@ -31,6 +34,7 @@ Read stdin into memory then open and write to FILE or stdout.\n\
   return -1;
 }
 int main(int argc, char **argv) {
+  setmode(0, O_BINARY);
   char *outname = 0;
   bool append = 0;
 #ifdef USE_GETOPT
@@ -101,6 +105,8 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+  // TODO: int fd?
+  if(!outname) setmode(1, O_BINARY);
   FILE *f = outname ? fopen(outname, append ? "ab" : "wb") : stdout;
   if(!f) {
     perror("ERROR");
