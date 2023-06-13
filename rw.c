@@ -10,6 +10,12 @@ Python _io_FileIO_readall_impl
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#if !defined NO_CHECKMEM && SIZE_MAX == 0xFFFFFFFFFFFFFFFF
+#define NO_CHECKMEM
+#endif
+#ifndef NO_CHECKMEM
+#include <errno.h>
+#endif
 #if BUFSIZ < 8192
 #define CHUNK 8192
 #elif(BUFSIZ >= (1 << 26))
@@ -59,12 +65,20 @@ int main(int argc, char **argv) {
   size_t bytes_read = 0;
   while(1) {
     if(bytes_read >= bufsize) {
+#ifndef NO_CHECKMEM
+      if(bufsize == SIZE_MAX) {
+	errno = ENOMEM;
+	perror("ERROR");
+	return 1;
+      }
+#endif
       size_t old_bufsize = bufsize, addend;
       if(bytes_read > 65536) addend = bytes_read >> 3;
       else
 	addend = 256 + bytes_read;
       if(addend < CHUNK) addend = CHUNK;
-      if(addend + bytes_read < bytes_read) bufsize = SIZE_MAX;
+      if(addend + bytes_read < bytes_read || addend + bytes_read > SIZE_MAX)
+	bufsize = SIZE_MAX;
       else
 	bufsize = addend + bytes_read;
       if(old_bufsize < bufsize) {
@@ -83,6 +97,15 @@ int main(int argc, char **argv) {
     }
     bytes_read += (size_t)n;
   }
+#ifdef MINIFY_BEFORE_WRITE
+  if(bufsize > bytes_read) {
+    buf = realloc(buf, bytes_read);
+    if(!buf) {
+      perror("ERROR");
+      return 1;
+    }
+  }
+#endif
   FILE *f = outname ? fopen(outname, append ? "ab" : "wb") : stdout;
   if(!f) {
     perror("ERROR");
