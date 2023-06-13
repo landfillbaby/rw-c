@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 #ifdef CHECKMEM
       if(bufsize == SIZE_MAX) {
 	if(!read(0, buf, 1)) break;
-	errno = EOVERFLOW;
+	errno = EFBIG;
 	perror("ERROR");
 	return 1;
       }
