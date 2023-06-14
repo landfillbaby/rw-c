@@ -38,11 +38,9 @@ int main(int argc, char **argv) {
   char *outname = 0;
   bool append = 0;
 #ifdef USE_GETOPT
-  int opt;
-  while((opt = getopt(argc, argv, "a")) != -1) {
+  for(int opt; (opt = getopt(argc, argv, "a")) != -1;) {
     if(opt == 'a') append = 1;
-    else
-      return usage();
+    else return usage();
   }
   if(optind < argc) outname = argv[optind];
 #else
@@ -106,9 +104,11 @@ int main(int argc, char **argv) {
   }
 #endif
   // TODO: int fd?
-  if(!outname) setmode(1, O_BINARY);
-  FILE *f = outname ? fopen(outname, append ? "ab" : "wb") : stdout;
-  if(!f) {
+  FILE *f;
+  if(!outname) {
+    setmode(1, O_BINARY);
+    f = stdout;
+  } else if(!(f = fopen(outname, append ? "ab" : "wb"))) {
     perror("ERROR");
     return 1;
   }
