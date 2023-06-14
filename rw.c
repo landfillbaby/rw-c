@@ -68,8 +68,10 @@ int main(int argc, char **argv) {
     if(bytes_read == bufsize) {
 #ifdef CHECKMEM
       if(bufsize == SIZE_MAX) {
-	if(!read(0, buf, 1)) goto maxsize;
-	if(!errno) errno = EFBIG;
+	switch(read(0, buf, 1)) {
+	  case 0: goto maxsize;
+	  case 1: errno = EFBIG;
+	}
 	perror("ERROR");
 	return 1;
       }
