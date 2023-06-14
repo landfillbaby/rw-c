@@ -62,12 +62,14 @@ int main(int argc, char **argv) {
     return 1;
   }
   size_t bytes_read = 0;
-  while(1) {
+  ssize_t n;
+  while((n = read(0, buf + bytes_read, bufsize - bytes_read)) > 0) {
+    bytes_read += (size_t)n;
     if(bytes_read == bufsize) {
 #ifdef CHECKMEM
       if(bufsize == SIZE_MAX) {
-	if(!read(0, buf, 1)) break;
-	errno = EFBIG;
+	if(!read(0, buf, 1)) goto maxsize;
+	if(!errno) errno = EFBIG;
 	perror("ERROR");
 	return 1;
       }
@@ -86,13 +88,10 @@ int main(int argc, char **argv) {
 	return 1;
       }
     }
-    ssize_t n = read(0, buf + bytes_read, bufsize - bytes_read);
-    if(!n) break;
-    if(n < 0) {
-      perror("ERROR");
-      return 1;
-    }
-    bytes_read += (size_t)n;
+  }
+  if(n < 0) {
+    perror("ERROR");
+    return 1;
   }
 #ifdef MINIFY_BEFORE_WRITE
   if(bufsize > bytes_read) {
@@ -103,8 +102,10 @@ int main(int argc, char **argv) {
     }
   }
 #endif
-  // TODO: int fd?
-  FILE *f;
+#ifdef CHECKMEM
+maxsize:;
+#endif
+  FILE *f; // TODO: int fd?
   if(!outname) {
     setmode(1, O_BINARY);
     f = stdout;
