@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   size_t bufsize = CHUNK;
   char *buf = malloc(bufsize);
   if(!buf) {
-    perror("ERROR");
+    perror("ERROR reading");
     return 1;
   }
   size_t bytes_read = 0;
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 	  case 0: goto maxsize;
 	  case 1: errno = EFBIG;
 	}
-	perror("ERROR");
+	perror("ERROR reading");
 	return 1;
       }
 #endif
@@ -89,20 +89,20 @@ int main(int argc, char **argv) {
 	bufsize += addend;
       buf = realloc(buf, bufsize);
       if(!buf) {
-	perror("ERROR");
+	perror("ERROR reading");
 	return 1;
       }
     }
   }
   if(n < 0) {
-    perror("ERROR");
+    perror("ERROR reading");
     return 1;
   }
 #ifdef MINIFY_BEFORE_WRITE
   if(bufsize > bytes_read) {
     buf = realloc(buf, bytes_read);
     if(!buf) {
-      perror("ERROR");
+      perror("ERROR reading");
       return 1;
     }
   }
@@ -122,21 +122,21 @@ maxsize:;
 		 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 #endif
 		 )) == -1) {
-    perror("ERROR");
-    return 1;
+    perror("ERROR writing");
+    return 2;
   }
   while(bytes_read) {
     n = write(f, buf, bytes_read);
     if(n < 0) {
-      perror("ERROR");
+      perror("ERROR writing");
       close(f);
-      return 1;
+      return 2;
     }
     bytes_read -= (size_t)n;
     buf += (size_t)n;
   }
   if(close(f)) {
-    perror("ERROR");
-    return 1;
+    perror("ERROR writing");
+    return 2;
   }
 }
