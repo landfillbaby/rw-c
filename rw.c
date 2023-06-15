@@ -2,19 +2,19 @@
 /* based on:
 https://github.com/jridgewell/rw
 moreutils sponge
-Python _io_FileIO_readall_impl and shutil.copyfile
-*/
+Python _io_FileIO_readall_impl and shutil.copyfile */
 #define _FILE_OFFSET_BITS 64
+#include <fcntl.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #ifdef CHECKMEM
 #include <errno.h>
+#include <stdint.h>
 #endif
 #ifdef _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
-#include <fcntl.h>
 #include <io.h>
 #ifndef CHUNK
 #define CHUNK (BUFSIZ > (1 << 20) ? BUFSIZ : (1 << 20))
@@ -22,15 +22,18 @@ Python _io_FileIO_readall_impl and shutil.copyfile
 #else
 #include <unistd.h>
 #define setmode(...) 0
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 #ifndef CHUNK
 #define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
 #endif
 #endif
 static int usage(void) {
-  fputs("Usage: rw [[-a] FILE]\n\
+#define W(x) write(2, x, sizeof(x) - 1)
+  W("Usage: rw [[-a] FILE]\n\
 Read stdin into memory then open and write to FILE or stdout.\n\
--a: append to file instead of overwriting.\n",
-      stderr);
+-a: append to file instead of overwriting.\n");
   return -1;
 }
 int main(int argc, char **argv) {
@@ -107,20 +110,32 @@ int main(int argc, char **argv) {
 #ifdef CHECKMEM
 maxsize:;
 #endif
-  FILE *f; // TODO: int fd?
+  int f;
   if(!outname) {
     setmode(1, O_BINARY);
-    f = stdout;
-  } else if(!(f = fopen(outname, append ? "ab" : "wb"))) {
+    f = 1;
+  } else if((f = open(outname,
+		 O_WRONLY | O_BINARY | O_CREAT | (append ? O_APPEND : O_TRUNC),
+#ifdef _WIN32
+		 S_IREAD | S_IWRITE
+#else
+		 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
+#endif
+		 )) == -1) {
     perror("ERROR");
     return 1;
   }
-  if(bytes_read && !fwrite(buf, 1, bytes_read, f)) {
-    perror("ERROR");
-    fclose(f);
-    return 1;
+  while(bytes_read) {
+    n = write(f, buf, bytes_read);
+    if(n < 0) {
+      perror("ERROR");
+      close(f);
+      return 1;
+    }
+    bytes_read -= (size_t)n;
+    buf += (size_t)n;
   }
-  if(fclose(f)) {
+  if(close(f)) {
     perror("ERROR");
     return 1;
   }
