@@ -13,7 +13,7 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #include <errno.h>
 #include <stdint.h>
 #endif
-#ifdef _WIN32
+#ifdef _WIN32 // TODO: test
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
 #ifndef CHUNK
@@ -28,6 +28,11 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #ifndef CHUNK
 #define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
 #endif
+#endif
+#ifdef DOFREE
+#define F free(buf)
+#else
+#define F 0
 #endif
 static int usage(void) {
 #define W(x) write(2, x, sizeof(x) - 1)
@@ -48,7 +53,7 @@ int main(int argc, char **argv) {
   if(optind < argc) outname = argv[optind];
 #else
   if(argc > 3) return usage();
-  else if(argc == 3) {
+  if(argc == 3) {
     if(*argv[1] != '-' || argv[1][1] != 'a' || argv[1][2] || *argv[2] == '-')
       return usage();
     append = 1;
@@ -76,6 +81,7 @@ int main(int argc, char **argv) {
 	  case 1: errno = EFBIG;
 	}
 	perror("ERROR reading");
+	F;
 	return 1;
       }
 #endif
@@ -87,24 +93,34 @@ int main(int argc, char **argv) {
       else
 #endif
 	bufsize += addend;
-      buf = realloc(buf, bufsize);
-      if(!buf) {
+      char *newbuf = realloc(buf, bufsize);
+      if(!newbuf) {
 	perror("ERROR reading");
+	F;
 	return 1;
       }
+      buf = newbuf;
     }
   }
   if(n < 0) {
     perror("ERROR reading");
+    F;
     return 1;
   }
-#ifdef MINIFY_BEFORE_WRITE
-  if(bufsize > bytes_read) {
-    buf = realloc(buf, bytes_read);
-    if(!buf) {
+#ifdef SHRINK_BEFORE_WRITE
+  if(!bytes_read) {
+    free(buf);
+#ifdef DOFREE
+    buf = 0;
+#endif
+  } else if(bufsize > bytes_read) {
+    char *newbuf = realloc(buf, bytes_read);
+    if(!newbuf) {
       perror("ERROR reading");
+      F;
       return 1;
     }
+    buf = newbuf;
   }
 #endif
 #ifdef CHECKMEM
@@ -123,6 +139,7 @@ maxsize:;
 #endif
 		 )) == -1) {
     perror("ERROR writing");
+    F;
     return 2;
   }
   while(bytes_read) {
@@ -130,6 +147,7 @@ maxsize:;
     if(n < 0) {
       perror("ERROR writing");
       close(f);
+      F;
       return 2;
     }
     bytes_read -= (size_t)n;
@@ -137,6 +155,8 @@ maxsize:;
   }
   if(close(f)) {
     perror("ERROR writing");
+    F;
     return 2;
   }
+  F;
 }
