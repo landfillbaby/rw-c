@@ -1,4 +1,3 @@
-name: CodeQL (filtered)
 on:
   push: {branches: ['**']}
   pull_request: {branches: ['**']}
