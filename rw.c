@@ -6,12 +6,15 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #define _FILE_OFFSET_BITS 64
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFF
+#define CHECKMEM
+#endif
 #ifdef CHECKMEM
 #include <errno.h>
-#include <stdint.h>
 #endif
 #ifdef _WIN32 // TODO: test
 #define _CRT_NONSTDC_NO_WARNINGS
