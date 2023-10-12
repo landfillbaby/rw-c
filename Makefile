@@ -17,14 +17,12 @@ LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
 endif
-all: rw rw_hugemalloc
-rw: rw_realloc
-	cp rw_realloc$(EXEEXT) rw$(EXEEXT)
-rw_realloc: rw_realloc.c
+rw: rw.c
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
-rw_hugemalloc: rw_hugemalloc.c
+all: rw rw_overcommit
+rw_overcommit: rw_overcommit.c
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
 install: rw
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
 clean:
-	$(RM) rw rw_realloc rw_hugemalloc
+	$(RM) rw rw_overcommit

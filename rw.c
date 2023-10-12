@@ -1,37 +1,43 @@
 // vi: sw=2 tw=80
 /* based on:
 https://github.com/jridgewell/rw
-moreutils sponge */
+moreutils sponge
+Python _io_FileIO_readall_impl and shutil.copyfile */
 #define _FILE_OFFSET_BITS 64
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFF
+#define CHECKMEM
+#endif
 #ifdef CHECKMEM
 #include <errno.h>
 #endif
 #ifdef _WIN32 // TODO: test
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
+#ifndef CHUNK
+#define CHUNK (BUFSIZ > (1 << 20) ? BUFSIZ : (1 << 20))
+#endif
+#define read(x, y, z) read(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
+#define write(x, y, z) write(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
 #else
 #include <unistd.h>
 #define setmode(...) 0
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
+#ifndef CHUNK
+#define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
+#endif
 #endif
 #ifdef DOFREE
 #define F free(buf)
 #else
 #define F 0
-#endif
-#ifndef RW_SIZE
-#ifdef __ANDROID__
-#define RW_SIZE (1ull << 38) // 256 GiB
-#else
-#define RW_SIZE (1ull << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
-#endif
 #endif
 static int usage(void) {
 #define W(x) write(2, x, sizeof(x) - 1)
@@ -62,27 +68,44 @@ int main(int argc, char **argv) {
     outname = argv[1];
   }
 #endif
-  char *buf = malloc(RW_SIZE);
+  size_t bufsize = CHUNK;
+  char *buf = malloc(bufsize);
   if(!buf) {
     perror("ERROR reading");
-    // F;
     return 1;
   }
   size_t bytes_read = 0;
   ssize_t n;
-  while((n = read(0, buf + bytes_read, RW_SIZE - bytes_read)) > 0) {
+  while((n = read(0, buf + bytes_read, bufsize - bytes_read)) > 0) {
     bytes_read += (size_t)n;
+    if(bytes_read == bufsize) {
 #ifdef CHECKMEM
-    if(bytes_read == RW_SIZE) {
-      switch(read(0, buf, 1)) {
-	case 0: goto maxsize;
-	case 1: errno = EFBIG;
+      if(bufsize == SIZE_MAX) {
+	switch(read(0, buf, 1)) {
+	  case 0: goto maxsize;
+	  case 1: errno = EFBIG;
+	}
+	perror("ERROR reading");
+	F;
+	return 1;
       }
-      perror("ERROR reading");
-      F;
-      return 1;
-    }
 #endif
+      size_t addend = bufsize / 8;
+      if(addend < CHUNK) addend = CHUNK;
+#ifdef CHECKMEM
+      if(bufsize + addend < bufsize || bufsize + addend > SIZE_MAX)
+	bufsize = SIZE_MAX;
+      else
+#endif
+	bufsize += addend;
+      char *newbuf = realloc(buf, bufsize);
+      if(!newbuf) {
+	perror("ERROR reading");
+	F;
+	return 1;
+      }
+      buf = newbuf;
+    }
   }
   if(n < 0) {
     perror("ERROR reading");
