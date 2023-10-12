@@ -126,17 +126,13 @@ maxsize:;
     F;
     return 2;
   }
-  for(char *ptr = buf; bytes_read;) { // TODO: loop formatting
-    n = write(f, ptr, bytes_read);
-    if(n < 0) {
+  for(char *ptr = buf; bytes_read; bytes_read -= (size_t)n, ptr += (size_t)n)
+    if((n = write(f, ptr, bytes_read)) < 0) {
       perror("ERROR writing");
       close(f);
       F;
       return 2;
     }
-    bytes_read -= (size_t)n;
-    ptr += (size_t)n;
-  }
   if(close(f)) {
     perror("ERROR writing");
     F;
