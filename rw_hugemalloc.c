@@ -1,8 +1,7 @@
 // vi: sw=2 tw=80
 /* based on:
 https://github.com/jridgewell/rw
-moreutils sponge
-Python _io_FileIO_readall_impl and shutil.copyfile */
+moreutils sponge */
 #define _FILE_OFFSET_BITS 64
 #include <fcntl.h>
 #include <stdbool.h>
