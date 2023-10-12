@@ -140,7 +140,8 @@ maxsize:;
 #else
 		 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 #endif
-		 )) == -1) {
+		 ))
+      == -1) {
     perror("ERROR writing");
     F;
     return 2;
