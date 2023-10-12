@@ -17,7 +17,12 @@ LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
 endif
-rw: rw.c
+all: rw rw_hugemalloc
+rw: rw_realloc
+	cp rw_realloc$(EXEEXT) rw$(EXEEXT)
+rw_realloc: rw_realloc.c
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
+rw_hugemalloc: rw_hugemalloc.c
 	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) -o $@
 install: rw
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
