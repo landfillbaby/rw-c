@@ -26,11 +26,11 @@ moreutils sponge */
 #else
 #define F 0
 #endif
-#ifndef MEMSIZE
+#ifndef RW_SIZE
 #ifdef __ANDROID__
-#define MEMSIZE (1ull << 38) // 256 GiB
+#define RW_SIZE (1ull << 38) // 256 GiB
 #else
-#define MEMSIZE (1 << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
+#define RW_SIZE (1 << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
 #endif
 #endif
 static int usage(void) {
@@ -62,17 +62,17 @@ int main(int argc, char **argv) {
     outname = argv[1];
   }
 #endif
-  char *buf = malloc(MEMSIZE);
+  char *buf = malloc(RW_SIZE);
   if(!buf) {
     perror("ERROR reading");
     return 1;
   }
   size_t bytes_read = 0;
   ssize_t n;
-  while((n = read(0, buf + bytes_read, MEMSIZE - bytes_read)) > 0) {
+  while((n = read(0, buf + bytes_read, RW_SIZE - bytes_read)) > 0) {
     bytes_read += (size_t)n;
 #ifdef CHECKMEM
-    if(bytes_read == MEMSIZE) {
+    if(bytes_read == RW_SIZE) {
       switch(read(0, buf, 1)) {
 	case 0: goto maxsize;
 	case 1: errno = EFBIG;
