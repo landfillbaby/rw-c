@@ -15,10 +15,6 @@ moreutils sponge */
 #ifdef CHECKMEM
 #include <errno.h>
 #endif
-#define setmode(...) 0
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
 #ifndef RW_SIZE
 #ifdef __ANDROID__
 #define RW_SIZE (1ull << 38) // 256 GiB
@@ -39,7 +35,6 @@ Read stdin into memory then open and write to FILE or stdout.\n\
   return -1;
 }
 int main(int argc, char **argv) {
-  setmode(0, O_BINARY);
   char *outname = 0;
   bool append = 0;
 #ifdef USE_GETOPT
@@ -63,7 +58,7 @@ int main(int argc, char **argv) {
   char *buf = malloc(RW_SIZE);
   if(!buf) {
     perror("ERROR reading");
-    // F;
+    F;
     return 1;
   }
   size_t bytes_read = 0;
@@ -106,19 +101,11 @@ int main(int argc, char **argv) {
 #ifdef CHECKMEM
 maxsize:;
 #endif
-  int f;
-  if(!outname) {
-    setmode(1, O_BINARY);
-    f = 1;
-  } else if((f = open(outname,
-		 O_WRONLY | O_BINARY | O_CREAT | (append ? O_APPEND : O_TRUNC),
-#ifdef _WIN32
-		 S_IREAD | S_IWRITE
-#else
-		 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
-#endif
-		 ))
-      == -1) {
+  int f = outname
+      ? open(outname, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC),
+	  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
+      : 1;
+  if(f == -1) {
     perror("ERROR writing");
     F;
     return 2;

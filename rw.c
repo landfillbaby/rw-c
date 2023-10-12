@@ -16,7 +16,7 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #ifdef CHECKMEM
 #include <errno.h>
 #endif
-#ifdef _WIN32 // TODO: test
+#ifdef _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
 #ifndef CHUNK
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   char *buf = malloc(bufsize);
   if(!buf) {
     perror("ERROR reading");
-    // F;
+    F;
     return 1;
   }
   size_t bytes_read = 0;
