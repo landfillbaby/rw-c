@@ -27,4 +27,4 @@ rw_hugemalloc: rw_hugemalloc.c
 install: rw
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
 clean:
-	$(RM) rw
+	$(RM) rw rw_realloc rw_hugemalloc
