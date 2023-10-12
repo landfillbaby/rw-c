@@ -30,6 +30,8 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #ifndef MEMSIZE
 #ifdef __ANDROID__
 #define MEMSIZE (1ull << 38) // 256 GiB
+#elif sizeof(void *) < 8
+#define MEMSIZE (1ull << 40) // 1 TiB
 #else
 #define MEMSIZE (1ull << 46) // 64 TiB
 #endif
