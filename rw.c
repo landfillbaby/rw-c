@@ -146,8 +146,8 @@ maxsize:;
     F;
     return 2;
   }
-  while(bytes_read) {
-    n = write(f, buf, bytes_read);
+  for(char *ptr = buf; bytes_read;) {
+    n = write(f, ptr, bytes_read);
     if(n < 0) {
       perror("ERROR writing");
       close(f);
@@ -155,7 +155,7 @@ maxsize:;
       return 2;
     }
     bytes_read -= (size_t)n;
-    buf += (size_t)n;
+    ptr += (size_t)n;
   }
   if(close(f)) {
     perror("ERROR writing");

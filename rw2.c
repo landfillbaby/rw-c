@@ -1,18 +1,17 @@
 // vi: sw=2 tw=80
-// WIP !!
 /* based on:
 https://github.com/jridgewell/rw
 moreutils sponge
 Python _io_FileIO_readall_impl and shutil.copyfile */
 #define _FILE_OFFSET_BITS 64
-#define _GNU_SOURCE
-#include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/mman.h>
+#include <stdlib.h>
 #include <sys/stat.h>
+#ifdef CHECKMEM
+#include <errno.h>
+#endif
 #ifdef _WIN32 // TODO: test
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
@@ -21,6 +20,18 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #define setmode(...) 0
 #ifndef O_BINARY
 #define O_BINARY 0
+#endif
+#endif
+#ifdef DOFREE
+#define F free(buf)
+#else
+#define F 0
+#endif
+#ifndef MEMSIZE
+#ifdef __ANDROID__
+#define MEMSIZE (1ull << 38) // 256 GiB
+#else
+#define MEMSIZE (1ull << 46) // 64 TiB
 #endif
 #endif
 static int usage(void) {
@@ -52,20 +63,35 @@ int main(int argc, char **argv) {
     outname = argv[1];
   }
 #endif
-  int memfd = memfd_create("rw", 0);
-  if(memfd == -1) {
+  char *buf = malloc(MEMSIZE);
+  if(!buf) {
     perror("ERROR reading");
     return 1;
   }
-  ssize_t r = splice(0, 0, memfd, 0, SSIZE_MAX, 0);
-  if(r < 0) {
-    if(errno == EINVAL) r = copy_file_range(0, 0, memfd, 0, SSIZE_MAX, 0);
-    if(r < 0) {
-      perror("ERROR reading");
-      close(memfd);
-      return 1;
+  size_t bytes_read = 0;
+  ssize_t n;
+  while((n = read(0, buf + bytes_read, MEMSIZE - bytes_read)) > 0) {
+    bytes_read += (size_t)n;
+#ifdef CHECKMEM
+    if(bytes_read == MEMSIZE) {
+	switch(read(0, buf, 1)) {
+	  case 0: goto maxsize;
+	  case 1: errno = EFBIG;
+	}
+	perror("ERROR reading");
+	F;
+	return 1;
     }
+#endif
   }
+  if(n < 0) {
+    perror("ERROR reading");
+    F;
+    return 1;
+  }
+#ifdef CHECKMEM
+maxsize:;
+#endif
   int f;
   if(!outname) {
     setmode(1, O_BINARY);
@@ -80,25 +106,24 @@ int main(int argc, char **argv) {
 		 ))
       == -1) {
     perror("ERROR writing");
-    close(memfd);
+    F;
     return 2;
   }
-  off64_t z = 0;
-  ssize_t r2 = splice(memfd, &z, f, 0, (size_t)r, 0);
-  if(r2 < 0) {
-    if(errno == EINVAL) r2 = copy_file_range(memfd, &z, f, 0, (size_t)r, 0);
-    if(r2 < 0) {
+  for(char *ptr = buf; bytes_read;) { // TODO: loop formatting
+    n = write(f, ptr, bytes_read);
+    if(n < 0) {
       perror("ERROR writing");
       close(f);
-      close(memfd);
+      F;
       return 2;
     }
+    bytes_read -= (size_t)n;
+    ptr += (size_t)n;
   }
-  if(r2 != r) W("ERROR writing: wrote less than read!");
   if(close(f)) {
     perror("ERROR writing");
-    close(memfd);
+    F;
     return 2;
   }
-  close(memfd);
+  F;
 }
