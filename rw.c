@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
   char *buf = malloc(bufsize);
   if(!buf) {
     perror("ERROR reading");
+    // F;
     return 1;
   }
   size_t bytes_read = 0;
