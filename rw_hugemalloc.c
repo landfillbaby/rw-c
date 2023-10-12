@@ -29,10 +29,8 @@ moreutils sponge */
 #ifndef MEMSIZE
 #ifdef __ANDROID__
 #define MEMSIZE (1ull << 38) // 256 GiB
-#elif sizeof(void *) < 8
-#define MEMSIZE (1ull << 40) // 1 TiB
 #else
-#define MEMSIZE (1ull << 46) // 64 TiB
+#define MEMSIZE (1 << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
 #endif
 #endif
 static int usage(void) {
