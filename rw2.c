@@ -76,13 +76,13 @@ int main(int argc, char **argv) {
     bytes_read += (size_t)n;
 #ifdef CHECKMEM
     if(bytes_read == MEMSIZE) {
-	switch(read(0, buf, 1)) {
-	  case 0: goto maxsize;
-	  case 1: errno = EFBIG;
-	}
-	perror("ERROR reading");
-	F;
-	return 1;
+      switch(read(0, buf, 1)) {
+	case 0: goto maxsize;
+	case 1: errno = EFBIG;
+      }
+      perror("ERROR reading");
+      F;
+      return 1;
     }
 #endif
   }
