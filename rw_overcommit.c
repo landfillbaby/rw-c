@@ -3,7 +3,7 @@
 https://github.com/jridgewell/rw
 moreutils sponge */
 #ifdef _WIN32
-#error Windows doesn't do overcommit
+#error "Windows doesn't do overcommit"
 #endif
 #define _FILE_OFFSET_BITS 64
 #include <fcntl.h>
