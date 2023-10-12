@@ -91,6 +91,22 @@ int main(int argc, char **argv) {
     F;
     return 1;
   }
+#ifdef SHRINK_BEFORE_WRITE
+  if(!bytes_read) {
+    free(buf);
+#ifdef DOFREE
+    buf = 0;
+#endif
+  } else if(bufsize > bytes_read) {
+    char *newbuf = realloc(buf, bytes_read);
+    if(!newbuf) {
+      perror("ERROR reading");
+      F;
+      return 1;
+    }
+    buf = newbuf;
+  }
+#endif
 #ifdef CHECKMEM
 maxsize:;
 #endif
