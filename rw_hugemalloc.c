@@ -30,7 +30,7 @@ moreutils sponge */
 #ifdef __ANDROID__
 #define RW_SIZE (1ull << 38) // 256 GiB
 #else
-#define RW_SIZE (1 << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
+#define RW_SIZE (1ull << (sizeof(void *) < 8 ? 40 : 46)) // 1 or 64 TiB
 #endif
 #endif
 static int usage(void) {
@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
   char *buf = malloc(RW_SIZE);
   if(!buf) {
     perror("ERROR reading");
+    // F;
     return 1;
   }
   size_t bytes_read = 0;
