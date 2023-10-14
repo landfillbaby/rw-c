@@ -12,9 +12,6 @@ moreutils sponge */
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#ifdef CHECKMEM
-#include <errno.h>
-#endif
 #ifndef RW_SIZE
 #ifdef __ANDROID__
 #define RW_SIZE (1ull << 38) // 256 GiB
@@ -28,10 +25,10 @@ moreutils sponge */
 #define F 0
 #endif
 static int usage(void) {
-#define W(x) write(2, x, sizeof(x) - 1)
+#define W(x) write(2, x "\n", sizeof(x))
   W("Usage: rw [[-a] FILE]\n\
 Read stdin into memory then open and write to FILE or stdout.\n\
--a: append to file instead of overwriting.\n");
+-a: append to file instead of overwriting.");
   return -1;
 }
 int main(int argc, char **argv) {
@@ -69,7 +66,10 @@ int main(int argc, char **argv) {
     if(bytes_read == RW_SIZE) {
       switch(read(0, buf, 1)) {
 	case 0: goto maxsize;
-	case 1: errno = EFBIG;
+	case 1:
+	  W("ERROR reading: File too big");
+	  F;
+	  return 1;
       }
       perror("ERROR reading");
       F;
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 #ifdef DOFREE
     buf = 0;
 #endif
-  } else if(bufsize > bytes_read) {
+  } else if(RW_SIZE > bytes_read) {
     char *newbuf = realloc(buf, bytes_read);
     if(!newbuf) {
       perror("ERROR reading");

@@ -13,9 +13,6 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFF
 #define CHECKMEM
 #endif
-#ifdef CHECKMEM
-#include <errno.h>
-#endif
 #ifdef _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
@@ -40,10 +37,10 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #define F 0
 #endif
 static int usage(void) {
-#define W(x) write(2, x, sizeof(x) - 1)
+#define W(x) write(2, x "\n", sizeof(x))
   W("Usage: rw [[-a] FILE]\n\
 Read stdin into memory then open and write to FILE or stdout.\n\
--a: append to file instead of overwriting.\n");
+-a: append to file instead of overwriting.");
   return -1;
 }
 int main(int argc, char **argv) {
@@ -84,7 +81,10 @@ int main(int argc, char **argv) {
       if(bufsize == SIZE_MAX) {
 	switch(read(0, buf, 1)) {
 	  case 0: goto maxsize;
-	  case 1: errno = EFBIG;
+	  case 1:
+	    W("ERROR reading: File too big");
+	    F;
+	    return 1;
 	}
 	perror("ERROR reading");
 	F;
