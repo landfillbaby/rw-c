@@ -22,10 +22,10 @@ moreutils sponge */
 #ifdef DOFREE
 #define F free(buf)
 #else
-#define F 0
+#define F ((void)0)
 #endif
 static int usage(void) {
-#define W(x) write(2, x "\n", sizeof(x))
+#define W(x) ((void)!write(2, x "\n", sizeof(x))) // __wur is stupid
   W("Usage: rw [[-a] FILE]\n\
 Read stdin into memory then open and write to FILE or stdout.\n\
 -a: append to file instead of overwriting.");

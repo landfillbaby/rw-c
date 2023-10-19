@@ -10,34 +10,35 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFF
+#if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFFull
 #define CHECKMEM
 #endif
 #ifdef _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <io.h>
 #ifndef CHUNK
-#define CHUNK (BUFSIZ > (1 << 20) ? BUFSIZ : (1 << 20))
+#define CHUNK (BUFSIZ > 0x100000ul ? BUFSIZ : 0x100000ul)
 #endif
+// TODO: fread fwrite?
 #define read(x, y, z) read(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
 #define write(x, y, z) write(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
 #else
 #include <unistd.h>
-#define setmode(...) 0
+#define setmode(...) ((void)0)
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
 #ifndef CHUNK
-#define CHUNK (BUFSIZ > (1 << 16) ? BUFSIZ : (1 << 16))
+#define CHUNK (BUFSIZ > 0x10000ul ? BUFSIZ : 0x10000ul)
 #endif
 #endif
 #ifdef DOFREE
 #define F free(buf)
 #else
-#define F 0
+#define F ((void)0)
 #endif
 static int usage(void) {
-#define W(x) write(2, x "\n", sizeof(x))
+#define W(x) ((void)!write(2, x "\n", sizeof(x))) // __wur is stupid
   W("Usage: rw [[-a] FILE]\n\
 Read stdin into memory then open and write to FILE or stdout.\n\
 -a: append to file instead of overwriting.");
