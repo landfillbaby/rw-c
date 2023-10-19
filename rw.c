@@ -20,8 +20,9 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #define CHUNK (BUFSIZ > 0x100000ul ? BUFSIZ : 0x100000ul)
 #endif
 // TODO: fread fwrite?
-#define read(x, y, z) read(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
-#define write(x, y, z) write(x, y, ((z) > UINT_MAX ? UINT_MAX : (unsigned)(z)))
+#define ssize_t int
+#define read(x, y, z) read(x, y, (unsigned)((z) > INT_MAX ? INT_MAX : (z)))
+#define write(x, y, z) write(x, y, (unsigned)((z) > INT_MAX ? INT_MAX : (z)))
 #else
 #include <unistd.h>
 #define setmode(...) ((void)0)
