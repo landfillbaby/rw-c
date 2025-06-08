@@ -10,7 +10,7 @@ Python _io_FileIO_readall_impl and shutil.copyfile */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#if !defined CHECKMEM && SIZE_MAX < 0xFFFFFFFFFFFFFFFFull
+#if !defined CHECKMEM && SIZE_MAX < 1ull << 50
 #define CHECKMEM
 #endif
 #ifdef _WIN32
