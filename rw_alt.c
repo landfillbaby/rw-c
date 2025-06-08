@@ -67,9 +67,10 @@ int main(int argc, char **argv) {
     outname = argv[1];
   }
 #endif
-  size_t bufsize = 0, bytes_read = 0;
+  size_t bufsize = CHUNK, bytes_read = 0;
   char *buf = 0;
   ssize_t n;
+  goto loopstart;
   for(;; bytes_read += (size_t)n) {
     if(bytes_read == bufsize) {
 #ifdef CHECKMEM
@@ -94,6 +95,7 @@ int main(int argc, char **argv) {
       else
 #endif
 	bufsize += addend;
+    loopstart:;
       char *newbuf = realloc(buf, bufsize);
       if(!newbuf) {
 	perror("ERROR reading");
