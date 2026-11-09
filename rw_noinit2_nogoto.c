@@ -47,7 +47,7 @@ Read stdin into memory then open and write to FILE or stdout.\n\
 }
 int main(int argc, char **argv) {
   setmode(0, O_BINARY);
-  char *outname = 0;
+  const char *outname = 0;
   bool append = 0;
 #ifdef USE_GETOPT
   for(int opt; (opt = getopt(argc, argv, "a")) != -1;) {
@@ -67,22 +67,16 @@ int main(int argc, char **argv) {
     outname = argv[1];
   }
 #endif
-  size_t bufsize = CHUNK, bytes_read = 0;
+  size_t bufsize = 0, bytes_read = 0;
   char *buf = 0;
-  ssize_t n;
-  goto loopstart;
-  for(;; bytes_read += (size_t)n) {
+  for(;;) {
     if(bytes_read == bufsize) {
 #ifdef CHECKMEM
       if(bufsize == SIZE_MAX) {
-	switch(read(0, buf, 1)) {
-	  case 0: goto maxsize;
-	  case 1:
-	    W("ERROR reading: File too big");
-	    F;
-	    return 1;
-	}
-	perror("ERROR reading");
+	ssize_t r = read(0, buf, 1);
+	if(!r) break;
+	if(r == 1) W("ERROR reading: File too big");
+	else perror("ERROR reading");
 	F;
 	return 1;
       }
@@ -95,7 +89,6 @@ int main(int argc, char **argv) {
       else
 #endif
 	bufsize += addend;
-    loopstart:;
       char *newbuf = realloc(buf, bufsize);
       if(!newbuf) {
 	perror("ERROR reading");
@@ -104,33 +97,33 @@ int main(int argc, char **argv) {
       }
       buf = newbuf;
     }
-    n = read(0, buf + bytes_read, bufsize - bytes_read);
-    if(n <= 0) {
-      if(!n) break;
-      perror("ERROR reading");
-      F;
-      return 1;
-    }
-  }
+    ssize_t n = read(0, buf + bytes_read, bufsize - bytes_read);
+    if(!n) {
 #ifdef SHRINK_BEFORE_WRITE
-  if(!bytes_read) {
-    free(buf);
+      if(!bytes_read) {
+	free(buf);
 #ifdef DOFREE
-    buf = 0;
+	buf = 0;
 #endif
-  } else if(bufsize > bytes_read) {
-    char *newbuf = realloc(buf, bytes_read);
-    if(!newbuf) {
+      } else if(bufsize > bytes_read) {
+	char *newbuf = realloc(buf, bytes_read);
+	if(!newbuf) {
+	  perror("ERROR reading");
+	  F;
+	  return 1;
+	}
+	buf = newbuf;
+      }
+#endif
+      break;
+    }
+    if(n < 0) {
       perror("ERROR reading");
       F;
       return 1;
     }
-    buf = newbuf;
+    bytes_read += (size_t)n;
   }
-#endif
-#ifdef CHECKMEM
-maxsize:;
-#endif
   int f;
   if(!outname) {
     setmode(1, O_BINARY);
@@ -148,13 +141,17 @@ maxsize:;
     F;
     return 2;
   }
-  for(char *ptr = buf; bytes_read; bytes_read -= (size_t)n, ptr += (size_t)n)
-    if((n = write(f, ptr, bytes_read)) < 0) {
+  for(char *ptr = buf; bytes_read;) {
+    ssize_t n = write(f, ptr, bytes_read);
+    if(n < 0) {
       perror("ERROR writing");
       close(f);
       F;
       return 2;
     }
+    bytes_read -= (size_t)n;
+    ptr += (size_t)n;
+  }
   if(close(f)) {
     perror("ERROR writing");
     F;
